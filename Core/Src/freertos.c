@@ -37,7 +37,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define TASK_COMPLETE_FLAGS 0x00000000U  /* Placeholder for tasks to be added later */
+#define ALL_TASKS_COMPLETED_FLAGS 0x00000000U  /* Placeholder for tasks to be added later */
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -54,6 +54,9 @@ const osThreadAttr_t idleTaskAttributes = {
 osThreadId_t watchdogTaskHandle;
 const osThreadAttr_t watchdogTaskAttributes = {
   .name = "watchdogTask", .stack_size = 128 * 4, .priority = osPriorityLow};
+
+osEventFlagsId_t tasksCompletedEventFlagsHandle;
+const osEventFlagsAttr_t tasksCompletedEventFlagsAttributes = {.name = "tasksCompleted"};
 /* USER CODE END Variables */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -95,7 +98,7 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
-  /* add events, ... */
+  tasksCompletedEventFlagsHandle = osEventFlagsNew(&tasksCompletedEventFlagsAttributes);
   /* USER CODE END RTOS_EVENTS */
 }
 
@@ -108,9 +111,9 @@ void MX_FREERTOS_Init(void) {
   */
 void watchdogTaskFunction(void *argument)
 {
-  osThreadFlagsWait(TASK_COMPLETE_FLAGS, (osFlagsWaitAll | osFlagsNoClear), 0);
+  osEventFlagsWait(tasksCompletedEventFlagsHandle, ALL_TASKS_COMPLETED_FLAGS, (osFlagsWaitAll | osFlagsNoClear), 0);
   HAL_IWDG_Refresh(&hiwdg);
-  osThreadFlagsClear(TASK_COMPLETE_FLAGS);
+  osEventFlagsClear(tasksCompletedEventFlagsHandle, ALL_TASKS_COMPLETED_FLAGS);
 }
 
 /**
