@@ -23,6 +23,8 @@
 #include "main.h"
 #include "cmsis_os.h"
 
+#include "iwdg.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -35,7 +37,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define TASK_COMPLETE_FLAGS 0x00000000U  /* Placeholder for tasks to be added later */
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,24 +47,21 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+osThreadId_t idleTaskHandle;
+const osThreadAttr_t idleTaskAttributes = {
+  .name = "idleTask", .stack_size = 128 * 4, .priority = osPriorityIdle};
 
+osThreadId_t watchdogTaskHandle;
+const osThreadAttr_t watchdogTaskAttributes = {
+  .name = "watchdogTask", .stack_size = 128 * 4, .priority = osPriorityLow};
 /* USER CODE END Variables */
-/* Definitions for defaultTask */
-osThreadId_t defaultTaskHandle;
-const osThreadAttr_t defaultTask_attributes = {
-  .name = "defaultTask",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-
-/* USER CODE END FunctionPrototypes */
-
-void StartDefaultTask(void *argument);
-
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+void idleTaskFunction(void *argument);
+void watchdogTaskFunction(void *argument);
+/* USER CODE END FunctionPrototypes */
 
 /**
   * @brief  FreeRTOS initialization
@@ -89,41 +88,41 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
-
-  /* Create the thread(s) */
-  /* creation of defaultTask */
-  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
-
+  
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  idleTaskHandle = osThreadNew(idleTaskFunction, NULL, &idleTaskAttributes);
+  watchdogTaskHandle = osThreadNew(watchdogTaskFunction, NULL, &watchdogTaskAttributes);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
   /* USER CODE END RTOS_EVENTS */
-
-}
-
-/* USER CODE BEGIN Header_StartDefaultTask */
-/**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void *argument)
-{
-  /* USER CODE BEGIN StartDefaultTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartDefaultTask */
 }
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
+/**
+  * @brief  Function implementing the watchdogTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+void watchdogTaskFunction(void *argument)
+{
+  osThreadFlagsWait(TASK_COMPLETE_FLAGS, (osFlagsWaitAll | osFlagsNoClear), 0);
+  HAL_IWDG_Refresh(&hiwdg);
+  osThreadFlagsClear(TASK_COMPLETE_FLAGS);
+}
 
+/**
+  * @brief  Function implementing the idleTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+void idleTaskFunction(void *argument)
+{
+  for(;;)
+  {
+    osDelay(1);
+  }
+}
 /* USER CODE END Application */
-

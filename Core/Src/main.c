@@ -16,12 +16,16 @@
   ******************************************************************************
   */
 /* USER CODE END Header */
+
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "projdefs.h"
+
 #include "can.h"
 #include "fatfs.h"
 #include "i2c.h"
+#include "iwdg.h"
 #include "quadspi.h"
 #include "sdio.h"
 #include "spi.h"
@@ -74,7 +78,6 @@ void MX_FREERTOS_Init(void);
   */
 int main(void)
 {
-
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -92,7 +95,11 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+  if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST))
+  {
+    /* Clear processor reset flags on IWDG reset. */
+    __HAL_RCC_CLEAR_RESET_FLAGS();
+  }
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -110,13 +117,15 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USB_OTG_FS_HCD_Init();
   MX_FATFS_Init();
+  MX_IWDG_Init();
+
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
 
   /* Init scheduler */
   osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
-  MX_FREERTOS_Init();
+  MX_FREERTOS_Init();    /* Initialize real-time tasks and synchronization primitives */
 
   /* Start scheduler */
   osKernelStart();
