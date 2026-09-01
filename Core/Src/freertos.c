@@ -105,6 +105,9 @@ void MX_FREERTOS_Init(void) {
   tasksCompleteEventFlagsHandle = osEventFlagsNew(&tasksCompleteEventFlagsAttributes);
   tasksContinueEventFlagsHandle = osEventFlagsNew(&tasksContinueEventFlagsAttributes);
   /* USER CODE END RTOS_EVENTS */
+
+  /* Reset IWDG on RTOS kernel start. */
+  osEventFlagsSet(tasksCompleteEventFlagsHandle, ALL_TASKS_COMPLETE_FLAGS);
 }
 
 /* Private application code --------------------------------------------------*/
