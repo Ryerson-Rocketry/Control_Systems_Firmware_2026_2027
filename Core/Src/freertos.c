@@ -37,12 +37,13 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ALL_TASKS_COMPLETED_FLAGS 0x00000000U  /* Placeholder for tasks to be added later */
+#define ALL_TASKS_COMPLETE_FLAGS 0x00000000U  /* Placeholder for tasks to be added later */
+#define ALL_TASKS_CONTINUE_FLAGS ALL_TASKS_COMPLETE_FLAGS
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+#define IS_EVENT_FLAGS_ERROR(flags) ((((uint32_t)(flags)) & 0x80000000U) != 0)
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -54,9 +55,12 @@ const osThreadAttr_t idleTaskAttributes = {
 osThreadId_t watchdogTaskHandle;
 const osThreadAttr_t watchdogTaskAttributes = {
   .name = "watchdogTask", .stack_size = 128 * 4, .priority = osPriorityLow};
-
-osEventFlagsId_t tasksCompletedEventFlagsHandle;
-const osEventFlagsAttr_t tasksCompletedEventFlagsAttributes = {.name = "tasksCompleted"};
+  
+osEventFlagsId_t tasksCompleteEventFlagsHandle;
+const osEventFlagsAttr_t tasksCompleteEventFlagsAttributes = {.name = "tasksComplete"};
+  
+osEventFlagsId_t tasksContinueEventFlagsHandle;
+const osEventFlagsAttr_t tasksContinueEventFlagsAttributes = {.name = "tasksContinue"};
 /* USER CODE END Variables */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -98,7 +102,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
-  tasksCompletedEventFlagsHandle = osEventFlagsNew(&tasksCompletedEventFlagsAttributes);
+  tasksCompleteEventFlagsHandle = osEventFlagsNew(&tasksCompleteEventFlagsAttributes);
+  tasksContinueEventFlagsHandle = osEventFlagsNew(&tasksContinueEventFlagsAttributes);
   /* USER CODE END RTOS_EVENTS */
 }
 
@@ -111,9 +116,19 @@ void MX_FREERTOS_Init(void) {
   */
 void watchdogTaskFunction(void *argument)
 {
-  osEventFlagsWait(tasksCompletedEventFlagsHandle, ALL_TASKS_COMPLETED_FLAGS, (osFlagsWaitAll | osFlagsNoClear), 0);
-  HAL_IWDG_Refresh(&hiwdg);
-  osEventFlagsClear(tasksCompletedEventFlagsHandle, ALL_TASKS_COMPLETED_FLAGS);
+  while (1)
+  {
+    uint32_t flags = osEventFlagsWait(tasksCompleteEventFlagsHandle, ALL_TASKS_COMPLETE_FLAGS, osFlagsWaitAll, 0);
+    if (IS_EVENT_FLAGS_ERROR(flags))
+    {
+      /* IWDG should eventually expire if osEventFlagsWait() continues to fail. */
+      osDelay(1);
+      continue;
+    }
+    
+    HAL_IWDG_Refresh(&hiwdg);
+    osEventFlagsSet(tasksContinueEventFlagsHandle, ALL_TASKS_CONTINUE_FLAGS);
+  }
 }
 
 /**
@@ -123,7 +138,7 @@ void watchdogTaskFunction(void *argument)
   */
 void idleTaskFunction(void *argument)
 {
-  for(;;)
+  while (1)
   {
     osDelay(1);
   }
