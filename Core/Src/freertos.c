@@ -43,7 +43,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-#define IS_EVENT_FLAGS_ERROR(flags) ((((uint32_t)(flags)) & 0x80000000U) != 0)
+
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -54,7 +54,7 @@ const osThreadAttr_t idleTaskAttributes = {
 
 osThreadId_t watchdogTaskHandle;
 const osThreadAttr_t watchdogTaskAttributes = {
-  .name = "watchdogTask", .stack_size = 128 * 4, .priority = osPriorityLow};
+  .name = "watchdogTask", .stack_size = 128 * 4, .priority = osPriorityHigh};
   
 osEventFlagsId_t tasksCompleteEventFlagsHandle;
 const osEventFlagsAttr_t tasksCompleteEventFlagsAttributes = {.name = "tasksComplete"};
@@ -66,8 +66,8 @@ const osEventFlagsAttr_t tasksContinueEventFlagsAttributes = {.name = "tasksCont
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
-void idleTaskFunction(void *argument);
-void watchdogTaskFunction(void *argument);
+void IdleTaskFunction(void *argument);
+void WatchdogTaskFunction(void *argument);
 /* USER CODE END FunctionPrototypes */
 
 /**
@@ -97,8 +97,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_QUEUES */
   
   /* USER CODE BEGIN RTOS_THREADS */
-  idleTaskHandle = osThreadNew(idleTaskFunction, NULL, &idleTaskAttributes);
-  watchdogTaskHandle = osThreadNew(watchdogTaskFunction, NULL, &watchdogTaskAttributes);
+  idleTaskHandle = osThreadNew(IdleTaskFunction, NULL, &idleTaskAttributes);
+  watchdogTaskHandle = osThreadNew(WatchdogTaskFunction, NULL, &watchdogTaskAttributes);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -117,12 +117,12 @@ void MX_FREERTOS_Init(void) {
   * @param  argument: Not used
   * @retval None
   */
-void watchdogTaskFunction(void *argument)
+void WatchdogTaskFunction(void *argument)
 {
-  while (1)
+  for(;;)
   {
-    uint32_t flags = osEventFlagsWait(tasksCompleteEventFlagsHandle, ALL_TASKS_COMPLETE_FLAGS, osFlagsWaitAll, 0);
-    if (IS_EVENT_FLAGS_ERROR(flags))
+    uint32_t flags = osEventFlagsWait(tasksCompleteEventFlagsHandle, ALL_TASKS_COMPLETE_FLAGS, osFlagsWaitAll, osWaitForever);
+    if (flags == osFlagsErrorUnknown || flags == osFlagsErrorTimeout || flags == osFlagsErrorResource || flags == osFlagsErrorParameter)
     {
       /* IWDG should eventually expire if osEventFlagsWait() continues to fail. */
       osDelay(1);
@@ -139,9 +139,9 @@ void watchdogTaskFunction(void *argument)
   * @param  argument: Not used
   * @retval None
   */
-void idleTaskFunction(void *argument)
+void IdleTaskFunction(void *argument)
 {
-  while (1)
+  for(;;)
   {
     osDelay(1);
   }
