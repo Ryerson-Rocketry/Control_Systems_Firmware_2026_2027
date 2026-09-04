@@ -34,6 +34,7 @@ set(MX_Application_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/freertos.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/can.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/i2c.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/iwdg.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/quadspi.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/sdio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/spi.c
@@ -69,6 +70,7 @@ set(STM32_Drivers_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_exti.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c_ex.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_iwdg.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_qspi.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_sdmmc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_sd.c
@@ -79,9 +81,7 @@ set(STM32_Drivers_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_usb.c
 )
 
-# Drivers Midllewares
-
-
+# FreeRTOS Middleware
 set(FreeRTOS_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/Third_Party/FreeRTOS/Source/croutine.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/Third_Party/FreeRTOS/Source/event_groups.c
@@ -94,6 +94,8 @@ set(FreeRTOS_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/port.c
 )
+
+# FatFs Middleware
 set(FatFs_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/Third_Party/FatFs/src/diskio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/Third_Party/FatFs/src/ff.c
@@ -103,14 +105,16 @@ set(FatFs_Src
 
 # Link directories setup
 set(MX_LINK_DIRS
-
 )
+
 # Project static libraries
 set(MX_LINK_LIBS 
     STM32_Drivers
     ${TOOLCHAIN_LINK_LIBRARIES}
-    FreeRTOS	FatFs	
+    FreeRTOS
+	FatFs
 )
+
 # Interface library for includes and symbols
 add_library(stm32cubemx INTERFACE)
 target_include_directories(stm32cubemx INTERFACE ${MX_Include_Dirs})
@@ -120,7 +124,6 @@ target_compile_definitions(stm32cubemx INTERFACE ${MX_Defines_Syms})
 add_library(STM32_Drivers OBJECT)
 target_sources(STM32_Drivers PRIVATE ${STM32_Drivers_Src})
 target_link_libraries(STM32_Drivers PUBLIC stm32cubemx)
-
 
 # Create FreeRTOS static library
 add_library(FreeRTOS OBJECT)

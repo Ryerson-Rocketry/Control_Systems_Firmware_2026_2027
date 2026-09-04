@@ -23,6 +23,8 @@
 #include "main.h"
 #include "cmsis_os.h"
 
+#include "iwdg.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -35,7 +37,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define ALL_TASKS_COMPLETE_FLAGS 0x00000000U  /* Placeholder for tasks to be added later */
+#define ALL_TASKS_CONTINUE_FLAGS ALL_TASKS_COMPLETE_FLAGS
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,24 +48,27 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+osThreadId_t idleTaskHandle;
+const osThreadAttr_t idleTaskAttributes = {
+  .name = "idleTask", .stack_size = 128 * 4, .priority = osPriorityIdle};
 
+osThreadId_t watchdogTaskHandle;
+const osThreadAttr_t watchdogTaskAttributes = {
+  .name = "watchdogTask", .stack_size = 128 * 4, .priority = osPriorityHigh};
+  
+osEventFlagsId_t tasksCompleteEventFlagsHandle;
+const osEventFlagsAttr_t tasksCompleteEventFlagsAttributes = {.name = "tasksComplete"};
+  
+osEventFlagsId_t tasksContinueEventFlagsHandle;
+const osEventFlagsAttr_t tasksContinueEventFlagsAttributes = {.name = "tasksContinue"};
 /* USER CODE END Variables */
-/* Definitions for defaultTask */
-osThreadId_t defaultTaskHandle;
-const osThreadAttr_t defaultTask_attributes = {
-  .name = "defaultTask",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-
-/* USER CODE END FunctionPrototypes */
-
-void StartDefaultTask(void *argument);
-
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+void IdleTaskFunction(void *argument);
+void WatchdogTaskFunction(void *argument);
+/* USER CODE END FunctionPrototypes */
 
 /**
   * @brief  FreeRTOS initialization
@@ -89,41 +95,54 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
-
-  /* Create the thread(s) */
-  /* creation of defaultTask */
-  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
-
+  
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  idleTaskHandle = osThreadNew(IdleTaskFunction, NULL, &idleTaskAttributes);
+  watchdogTaskHandle = osThreadNew(WatchdogTaskFunction, NULL, &watchdogTaskAttributes);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
-  /* add events, ... */
+  tasksCompleteEventFlagsHandle = osEventFlagsNew(&tasksCompleteEventFlagsAttributes);
+  tasksContinueEventFlagsHandle = osEventFlagsNew(&tasksContinueEventFlagsAttributes);
   /* USER CODE END RTOS_EVENTS */
 
-}
-
-/* USER CODE BEGIN Header_StartDefaultTask */
-/**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void *argument)
-{
-  /* USER CODE BEGIN StartDefaultTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartDefaultTask */
+  /* Reset IWDG on RTOS kernel start. */
+  osEventFlagsSet(tasksCompleteEventFlagsHandle, ALL_TASKS_COMPLETE_FLAGS);
 }
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
+/**
+  * @brief  Function implementing the watchdogTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+void WatchdogTaskFunction(void *argument)
+{
+  for(;;)
+  {
+    uint32_t flags = osEventFlagsWait(tasksCompleteEventFlagsHandle, ALL_TASKS_COMPLETE_FLAGS, osFlagsWaitAll, osWaitForever);
+    if (flags == osFlagsErrorUnknown || flags == osFlagsErrorTimeout || flags == osFlagsErrorResource || flags == osFlagsErrorParameter)
+    {
+      /* IWDG should eventually expire if osEventFlagsWait() continues to fail. */
+      continue;
+    }
+    
+    HAL_IWDG_Refresh(&hiwdg);
+    osEventFlagsSet(tasksContinueEventFlagsHandle, ALL_TASKS_CONTINUE_FLAGS);
+  }
+}
 
+/**
+  * @brief  Function implementing the idleTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+void IdleTaskFunction(void *argument)
+{
+  for(;;)
+  {
+    osDelay(1);
+  }
+}
 /* USER CODE END Application */
-
