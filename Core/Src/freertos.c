@@ -125,7 +125,6 @@ void WatchdogTaskFunction(void *argument)
     if (flags == osFlagsErrorUnknown || flags == osFlagsErrorTimeout || flags == osFlagsErrorResource || flags == osFlagsErrorParameter)
     {
       /* IWDG should eventually expire if osEventFlagsWait() continues to fail. */
-      osDelay(1);
       continue;
     }
     
