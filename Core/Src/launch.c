@@ -3,7 +3,7 @@
 #include "launch.h"
 #include <stdint.h>
 #include "ms5607.h"
-
+#include <stdbool.h>
 
 typedef enum {
     PAD_IDLE,
@@ -143,7 +143,9 @@ void updateFlightData(Flight_Controller *fc) {
             break;
 
         case FAIL:
-            printf("BAROMETER PROM INTEGRITY CHECK FAILED")
+            // need to update based on whatever loging mechanism we use
+            printf("BAROMETER PROM INTEGRITY CHECK FAILED");
+            break;
     }
 }
 
