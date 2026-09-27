@@ -10,7 +10,8 @@ typedef enum {
     BOOST,
     COAST,
     APOGEE,
-    DESCENT
+    DESCENT,
+    FAIL
 } FLIGHTSTATE;
 
 
@@ -20,11 +21,16 @@ typedef struct {
 } Flight_Controller;
 
 Flight_Controller fc;
-// put this here temproarily as I figure out how to get PROM
-uint16_t prom[8] = {0};
+uint16_t prom[8];
 
 void init_flightController(Flight_Controller *fc) {
     fc->STATE = PAD_IDLE;
+}
+
+bool Baro_Init() {
+    MS5607_ReadMemory(prom);
+    return MS5607_VerifyDeviceCRC(prom);
+    
 }
 
 void pad_init(Flight_Controller *fc) {
@@ -43,7 +49,7 @@ void pad_init(Flight_Controller *fc) {
         // need to figure out how to read prom array from barometer
         MS5607_CalculateAbsoluteTP(conv, prom, result);
         accum_pressure += result[0];
-        osDelay(1000 / PAD_SAMPLE_RATE_HZ)
+        osDelay(1000 / PAD_SAMPLE_RATE_HZ);
     }
 
     fc->PAD_PRESSURE = (accum_pressure / count);
@@ -100,7 +106,7 @@ void LaunchDetect_Update(Flight_Controller *fc) {
             timeout_clock_ms = 0;
         }
         // i got ai to help with this, because we need to pace like how much cpu time this process takes up + give time for the sensors to actually collect data?
-        osDelay(1000 / PAD_SAMPLE_RATE_HZ)
+        osDelay(1000 / PAD_SAMPLE_RATE_HZ);
     } 
 }
 
@@ -108,9 +114,13 @@ void LaunchDetect_Update(Flight_Controller *fc) {
 void updateFlightData(Flight_Controller *fc) {
     switch (fc->STATE) {
         case PAD_IDLE:
-            pad_init(fc);
-            LaunchDetect_Update(fc);
-            fc->STATE = BOOST;
+            if (Baro_Init()) {
+                pad_init(fc);
+                LaunchDetect_Update(fc);
+                fc->STATE = BOOST;
+            }  else {
+                fc->STATE = FAIL;
+            }
             break;
         
         case BOOST:
@@ -131,6 +141,9 @@ void updateFlightData(Flight_Controller *fc) {
         case DESCENT:
             //do something
             break;
+
+        case FAIL:
+            printf("BAROMETER PROM INTEGRITY CHECK FAILED")
     }
 }
 
